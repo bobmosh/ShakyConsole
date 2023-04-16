@@ -52,7 +52,7 @@ public struct ConsoleLogger: Logger {
     }
 }
 
-public class ShakyLogger: Logger {
+public class ShakyLogger: Logger, ObservableObject {
     public struct Log: Hashable {
         var value: String
         var level: Shaky.Level
@@ -60,7 +60,7 @@ public class ShakyLogger: Logger {
         var timestamp: Date
     }
     
-    fileprivate var logs: [Log] = []
+    @Published fileprivate var logs: [Log] = []
     
     public func log(value: String, level: Shaky.Level, tag: Shaky.Tag?) {
         logs.append(
@@ -75,7 +75,7 @@ public class ShakyLogger: Logger {
 }
 
 public struct ShakyLoggerSheet: View {
-    var logger: ShakyLogger
+    @ObservedObject var logger: ShakyLogger
     
     public init(logger: ShakyLogger) {
         self.logger = logger

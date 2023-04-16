@@ -23,6 +23,11 @@ struct ContentView: View {
             Shaky.log(value: "Debug", level: .Debug)
             Shaky.log(value: "Warning", level: .Warning)
             Shaky.log(value: "Critical", level: .Critical, tag: .Network)
+            
+            Task {
+                try await Task.sleep(nanoseconds: 1_000_000_000 * 10)
+                Shaky.log(value: "Timed")
+            }
         }
         .shaky(with: Shaky.shakyLogger)
     }
