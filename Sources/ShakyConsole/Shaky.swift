@@ -8,7 +8,7 @@ public extension Shaky {
         case Security
     }
     
-    enum Level {
+    enum Level: String, CaseIterable {
         case None
         case Debug
         case Warning
@@ -60,7 +60,14 @@ public class ShakyLogger: Logger, ObservableObject {
         var timestamp: Date
     }
     
-    @Published fileprivate var logs: [Log] = []
+    @Published private var logs: [Log] = []
+    @Published fileprivate var levelFilter: [Shaky.Level] = []
+    
+    fileprivate var filteredLogs: [Log] {
+        if levelFilter != [] {
+            return logs.filter { levelFilter.contains($0.level) }
+        } else { return logs }
+    }
     
     public func log(value: String, level: Shaky.Level, tag: Shaky.Tag?) {
         logs.append(
@@ -96,39 +103,64 @@ public struct ShakyLoggerSheet: View {
     }
     
     public var body: some View {
-        Form {
-            ForEach(logger.logs, id: \.self) { log in
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Image(systemName: "circle.fill")
-                            .foregroundColor(log.level.color)
-                            .font(.system(size: 8))
-                        Text(log.value)
-                        
-                        Spacer()
-                        
-                        VStack {
-                            Text(dateFormatter.string(from: log.timestamp))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            Text(timeFormatter.string(from: log.timestamp))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+        VStack(spacing: 0) {
+            ScrollView(.horizontal) {
+                HStack {
+                    ForEach(Shaky.Level.allCases, id: \.self) { level in
+                        Button {
+                            if logger.levelFilter.contains(level) {
+                                logger.levelFilter.removeAll { $0 == level }
+                            } else {
+                                logger.levelFilter.append(level)
+                            }
+                        } label: {
+                            Text(level.rawValue)
+                                .padding(4)
+                                .padding(.horizontal, 8)
+                                .background(logger.levelFilter.contains(level) ? level.color.opacity(0.4) : level.color.opacity(0.1))
+                                .cornerRadius(100)
                         }
+                        .foregroundColor(.primary)
                     }
-                    
-                    if let tag = log.tag {
-                        Text("#\(tag.rawValue)")
-                            .font(.system(size: 8))
-                            .padding(4)
-                            .padding(.horizontal, 6)
-                            .background(Color.secondary.opacity(0.3))
-                            .cornerRadius(100)
+                }
+            }
+            .padding([.top, .horizontal], 24)
+            
+            Form {
+                ForEach(logger.filteredLogs, id: \.self) { log in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Image(systemName: "circle.fill")
+                                .foregroundColor(log.level.color)
+                                .font(.system(size: 8))
+                            Text(log.value)
+                            
+                            Spacer()
+                            
+                            VStack {
+                                Text(dateFormatter.string(from: log.timestamp))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Text(timeFormatter.string(from: log.timestamp))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        if let tag = log.tag {
+                            Text("#\(tag.rawValue)")
+                                .font(.system(size: 8))
+                                .padding(4)
+                                .padding(.horizontal, 6)
+                                .background(Color.secondary.opacity(0.3))
+                                .cornerRadius(100)
+                        }
                     }
                 }
             }
         }
+        .background(Color(UIColor.systemGroupedBackground))
     }
 }
 
