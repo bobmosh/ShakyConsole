@@ -74,7 +74,15 @@ public class ShakyLogger: Logger, ObservableObject {
     @Published private var logs: [Log] = []
     @Published fileprivate var levelFilter: [Shaky.Level] = []
     @Published fileprivate var tagFilter: [Shaky.Tag] = []
-    fileprivate var availableTags: [Shaky.Tag] { Array(Set(logs.compactMap { $0.tag })) }
+    fileprivate var availableTags: [Shaky.Tag] {
+        Array(Set(logs.compactMap { $0.tag }))
+            .sorted(by: { lhs, rhs in
+                lhs.name < rhs.name
+            })
+            .sorted { lhs, rhs in
+                tagFilter.contains(lhs)
+            }
+    }
     
     fileprivate var filteredLogs: [Log] {
         let levelFiltered = logs.filter { log in
@@ -182,7 +190,17 @@ public struct ShakyLoggerSheet: View {
                                 Image(systemName: "circle.fill")
                                     .foregroundColor(log.level.color)
                                     .font(.system(size: 8))
+                                
                                 Text(log.value)
+                                
+                                if let tag = log.tag {
+                                    Text("#\(tag.name)")
+                                        .font(.system(size: 8))
+                                        .padding(4)
+                                        .padding(.horizontal, 6)
+                                        .background(Color.secondary.opacity(0.3))
+                                        .cornerRadius(100)
+                                }
                                 
                                 Spacer()
                                 
@@ -195,15 +213,6 @@ public struct ShakyLoggerSheet: View {
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
-                            }
-                            
-                            if let tag = log.tag {
-                                Text("#\(tag.name)")
-                                    .font(.system(size: 8))
-                                    .padding(4)
-                                    .padding(.horizontal, 6)
-                                    .background(Color.secondary.opacity(0.3))
-                                    .cornerRadius(100)
                             }
                         }
                     }
