@@ -74,7 +74,7 @@ public class ShakyLogger: Logger, ObservableObject {
     @Published private var logs: [Log] = []
     @Published fileprivate var levelFilter: [Shaky.Level] = []
     @Published fileprivate var tagFilter: [Shaky.Tag] = []
-    fileprivate var availableTags: [Shaky.Tag] { logs.compactMap { $0.tag } }
+    fileprivate var availableTags: [Shaky.Tag] { Array(Set(logs.compactMap { $0.tag })) }
     
     fileprivate var filteredLogs: [Log] {
         let levelFiltered = logs.filter { log in
