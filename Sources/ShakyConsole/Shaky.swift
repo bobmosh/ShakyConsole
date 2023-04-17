@@ -1,11 +1,22 @@
 import SwiftUI
 
 public extension Shaky {
-    enum Tag: String {
+    enum Tag: Hashable {
         case Network
         case Timing
         case Performance
         case Security
+        case Custom(String)
+        
+        var name: String {
+            switch self {
+            case .Network: return "Network"
+            case .Timing: return "Timing"
+            case .Performance: return "Performance"
+            case .Security: return "Security"
+            case let .Custom(name): return name
+            }
+        }
     }
     
     enum Level: String, CaseIterable {
@@ -62,11 +73,22 @@ public class ShakyLogger: Logger, ObservableObject {
     
     @Published private var logs: [Log] = []
     @Published fileprivate var levelFilter: [Shaky.Level] = []
+    @Published fileprivate var tagFilter: [Shaky.Tag] = []
+    fileprivate var availableTags: [Shaky.Tag] { logs.compactMap { $0.tag } }
     
     fileprivate var filteredLogs: [Log] {
-        if levelFilter != [] {
-            return logs.filter { levelFilter.contains($0.level) }
-        } else { return logs }
+        let levelFiltered = logs.filter { log in
+            guard !levelFilter.isEmpty else { return true }
+            return levelFilter.contains(log.level)
+        }
+        
+        let tagFiltered = levelFiltered.filter { log in
+            guard !tagFilter.isEmpty else { return true }
+            guard let tag = log.tag else { return false }
+            return tagFilter.contains(tag)
+        }
+        
+        return tagFiltered
     }
     
     public func log(value: String, level: Shaky.Level, tag: Shaky.Tag?) {
@@ -82,11 +104,7 @@ public class ShakyLogger: Logger, ObservableObject {
 }
 
 public struct ShakyLoggerSheet: View {
-    @ObservedObject var logger: ShakyLogger
-    
-    public init(logger: ShakyLogger) {
-        self.logger = logger
-    }
+    @ObservedObject var logger: ShakyLogger = Shaky.shakyLogger
     
     var dateFormatter: DateFormatter {
         let dateFormatter = DateFormatter()
@@ -104,7 +122,7 @@ public struct ShakyLoggerSheet: View {
     
     public var body: some View {
         VStack(spacing: 0) {
-            ScrollView(.horizontal) {
+            ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     ForEach(Shaky.Level.allCases, id: \.self) { level in
                         Button {
@@ -119,48 +137,81 @@ public struct ShakyLoggerSheet: View {
                                 .padding(.horizontal, 8)
                                 .background(logger.levelFilter.contains(level) ? level.color.opacity(0.4) : level.color.opacity(0.1))
                                 .cornerRadius(100)
+                                .foregroundColor(.primary)
                         }
-                        .foregroundColor(.primary)
+                        .contentShape(Rectangle())
                     }
                 }
+                .padding(.bottom)
             }
             .padding([.top, .horizontal], 24)
             
-            Form {
-                ForEach(logger.filteredLogs, id: \.self) { log in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Image(systemName: "circle.fill")
-                                .foregroundColor(log.level.color)
-                                .font(.system(size: 8))
-                            Text(log.value)
-                            
-                            Spacer()
-                            
-                            VStack {
-                                Text(dateFormatter.string(from: log.timestamp))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                
-                                Text(timeFormatter.string(from: log.timestamp))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+            if logger.availableTags != [] {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        ForEach(logger.availableTags, id: \.self) { tag in
+                            Button {
+                                if logger.tagFilter.contains(tag) {
+                                    logger.tagFilter.removeAll { $0 == tag }
+                                } else {
+                                    logger.tagFilter.append(tag)
+                                }
+                            } label: {
+                                Text("#\(tag.name)")
+                                    .padding(4)
+                                    .padding(.horizontal, 8)
+                                    .background(Color.secondary.opacity(logger.tagFilter.contains(tag) ? 0.4 : 0.1))
+                                    .cornerRadius(100)
+                                    .foregroundColor(.primary)
                             }
+                            .contentShape(Rectangle())
                         }
-                        
-                        if let tag = log.tag {
-                            Text("#\(tag.rawValue)")
-                                .font(.system(size: 8))
-                                .padding(4)
-                                .padding(.horizontal, 6)
-                                .background(Color.secondary.opacity(0.3))
-                                .cornerRadius(100)
+                    }
+                    .padding(.bottom)
+                }
+                .padding(.horizontal, 24)
+            }
+                    
+            if logger.filteredLogs.isEmpty {
+                Spacer()
+            } else {
+                Form {
+                    ForEach(logger.filteredLogs, id: \.self) { log in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Image(systemName: "circle.fill")
+                                    .foregroundColor(log.level.color)
+                                    .font(.system(size: 8))
+                                Text(log.value)
+                                
+                                Spacer()
+                                
+                                VStack {
+                                    Text(dateFormatter.string(from: log.timestamp))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text(timeFormatter.string(from: log.timestamp))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
+                            if let tag = log.tag {
+                                Text("#\(tag.name)")
+                                    .font(.system(size: 8))
+                                    .padding(4)
+                                    .padding(.horizontal, 6)
+                                    .background(Color.secondary.opacity(0.3))
+                                    .cornerRadius(100)
+                            }
                         }
                     }
                 }
             }
         }
         .background(Color(UIColor.systemGroupedBackground))
+        .edgesIgnoringSafeArea(.all)
     }
 }
 
