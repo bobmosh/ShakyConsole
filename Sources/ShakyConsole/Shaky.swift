@@ -237,7 +237,7 @@ struct ShakySheet: ViewModifier {
 }
 
 public extension View {
-    func shaky(with logger: ShakyLogger) -> some View {
+    func shaky(with logger: ShakyLogger = Shaky.shakyLogger) -> some View {
         modifier(ShakySheet(shakyLogger: logger))
     }
 }
