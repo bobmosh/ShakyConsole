@@ -63,14 +63,44 @@ public struct ConsoleLogger: Logger {
     }
 }
 
-public class ShakyLogger: Logger, ObservableObject {
-    public struct Log: Hashable {
-        var value: String
-        var level: Shaky.Level
-        var tag: Shaky.Tag?
-        var timestamp: Date
+public struct Log: Hashable {
+    var value: String
+    var level: Shaky.Level
+    var tag: Shaky.Tag?
+    var timestamp: Date
+
+    public enum DisplayComponent {
+        case value
+        case level
+        case tag
+        case timestamp
+
+        public static let full: Set<DisplayComponent> = [.value, .level, .tag, .timestamp]
+        public static let reduced: Set<DisplayComponent> = [.timestamp, .value]
     }
-    
+
+
+    public func toString(components: Set<DisplayComponent> = DisplayComponent.full) -> String {
+        var parts: [String] = []
+
+        if components.contains(.level) {
+            parts.append("[\(level.rawValue)]")
+        }
+        if components.contains(.value) {
+            parts.append("\(value)")
+        }
+        if components.contains(.timestamp) {
+            parts.append("[\(timestamp)]")
+        }
+        if components.contains(.tag), let tag = tag {
+            parts.append("[\(tag.name)]")
+        }
+
+        return parts.joined(separator: " ")
+    }
+}
+
+public class ShakyLogger: Logger, ObservableObject {
     @Published private var logs: [Log] = []
     @Published fileprivate var levelFilter: [Shaky.Level] = []
     @Published fileprivate var tagFilter: [Shaky.Tag] = []
@@ -128,33 +158,64 @@ public struct ShakyLoggerSheet: View {
         dateFormatter.timeStyle = .medium
         return dateFormatter
     }
-    
+
+    private func share(logs: String) {
+        DispatchQueue.main.async {
+            let tempDir = FileManager.default.temporaryDirectory
+            let fileURL = tempDir.appendingPathComponent("log.txt")
+
+            do {
+                try logs.write(to: fileURL, atomically: true, encoding: .utf8)
+                let activityVC = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+                if let topController = UIApplication.shared.windows.first?.rootViewController {
+                    var presentedVC = topController
+                    while let nextVC = presentedVC.presentedViewController {
+                        presentedVC = nextVC
+                    }
+                    presentedVC.present(activityVC, animated: true, completion: nil)
+                }
+            } catch {
+                print("Failed to write log to file: \(error)")
+            }
+        }
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(Shaky.Level.allCases, id: \.self) { level in
-                        Button {
-                            if logger.levelFilter.contains(level) {
-                                logger.levelFilter.removeAll { $0 == level }
-                            } else {
-                                logger.levelFilter.append(level)
-                            }
-                        } label: {
-                            Text(level.rawValue)
-                                .padding(4)
-                                .padding(.horizontal, 8)
-                                .background(logger.levelFilter.contains(level) ? level.color.opacity(0.4) : level.color.opacity(0.1))
-                                .cornerRadius(100)
-                                .foregroundColor(.primary)
-                        }
-                        .contentShape(Rectangle())
-                    }
+            HStack(alignment: .top) {
+                Button {
+                    let shareText = logger.filteredLogs.toString()
+                    share(logs: shareText)
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.body.bold())
                 }
-                .padding(.bottom)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        ForEach(Shaky.Level.allCases, id: \.self) { level in
+                            Button {
+                                if logger.levelFilter.contains(level) {
+                                    logger.levelFilter.removeAll { $0 == level }
+                                } else {
+                                    logger.levelFilter.append(level)
+                                }
+                            } label: {
+                                Text(level.rawValue)
+                                    .padding(4)
+                                    .padding(.horizontal, 8)
+                                    .background(logger.levelFilter.contains(level) ? level.color.opacity(0.4) : level.color.opacity(0.1))
+                                    .cornerRadius(100)
+                                    .foregroundColor(.primary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                    }
+                    .padding(.bottom)
+                }
             }
             .padding([.top, .horizontal], 24)
-            
+
             if logger.availableTags != [] {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
@@ -274,5 +335,11 @@ struct DeviceShakeViewModifier: ViewModifier {
 extension View {
     func onShake(perform action: @escaping () -> Void) -> some View {
         self.modifier(DeviceShakeViewModifier(action: action))
+    }
+}
+
+extension [Log] {
+    func toString() -> String {
+        self.map { $0.toString() }.joined(separator: "\n")
     }
 }

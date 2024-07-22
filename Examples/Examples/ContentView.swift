@@ -26,7 +26,7 @@ struct ContentView: View {
             Shaky.log(value: "Critical", level: .Critical, tag: .Performance)
             Shaky.log(value: "Critical", level: .Critical, tag: .Performance)
             
-            Task {
+            Task.detached {
                 try await Task.sleep(nanoseconds: 1_000_000_000 * 10)
                 Shaky.log(value: "Timed")
             }
