@@ -172,6 +172,11 @@ public struct ShakyLoggerSheet: View {
                     while let nextVC = presentedVC.presentedViewController {
                         presentedVC = nextVC
                     }
+                    if let popoverController = activityVC.popoverPresentationController {
+                        popoverController.sourceView = presentedVC.view
+                        popoverController.sourceRect = CGRect(x: presentedVC.view.bounds.midX, y: presentedVC.view.bounds.midY, width: 0, height: 0)
+                        popoverController.permittedArrowDirections = []
+                    }
                     presentedVC.present(activityVC, animated: true, completion: nil)
                 }
             } catch {
