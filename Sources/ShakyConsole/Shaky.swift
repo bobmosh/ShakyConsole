@@ -100,13 +100,14 @@ public class ShakyLogger: Logger, ObservableObject {
     }
     
     public func log(value: String, level: Shaky.Level, tag: Shaky.Tag?) {
-        logs.append(
+        logs.insert(
             Log(
                 value: value,
                 level: level,
                 tag: tag,
                 timestamp: Date()
-            )
+            ),
+            at: 0
         )
     }
 }
