@@ -40,13 +40,15 @@ public struct Shaky {
     public static let shared = Shaky()
     public static let shakyLogger = ShakyLogger()
     fileprivate static var loggers: [Logger] = [shakyLogger]
-    
+
     public static func log(value: String, level: Level = .None, tag: Tag? = nil) {
-        loggers.forEach { logger in
-            logger.log(value: value, level: level, tag: tag)
+        Task { @MainActor in
+            for logger in loggers {
+                logger.log(value: value, level: level, tag: tag)
+            }
         }
     }
-    
+
     public static func add(logger: Logger) {
         Shaky.loggers.append(logger)
     }
