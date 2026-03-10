@@ -100,7 +100,7 @@ var body: some View {
 ```
 
 ### Sharing and formatting
-- Tap the share button in the console to export the currently filtered logs as `.txt`.
+- Tap the share button in the console to export all logs as `.txt` (full logs, regardless of active filters).
 - Each log can be rendered as a string internally via `Log.toString(components:)`, which supports values, level, tag, and timestamp.
 
 ### Custom loggers

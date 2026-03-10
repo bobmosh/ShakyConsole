@@ -116,18 +116,21 @@ public class ShakyLogger: Logger, ObservableObject {
             }
     }
     
+    /// Full, unfiltered logs — use for export so users always get complete logs.
+    fileprivate var allLogs: [Log] { logs }
+
     fileprivate var filteredLogs: [Log] {
         let levelFiltered = logs.filter { log in
             guard !levelFilter.isEmpty else { return true }
             return levelFilter.contains(log.level)
         }
-        
+
         let tagFiltered = levelFiltered.filter { log in
             guard !tagFilter.isEmpty else { return true }
             guard let tag = log.tag else { return false }
             return tagFilter.contains(tag)
         }
-        
+
         return tagFiltered
     }
     
@@ -187,109 +190,221 @@ public struct ShakyLoggerSheet: View {
         }
     }
 
+    private var isEmptyState: Bool {
+        logger.filteredLogs.isEmpty
+    }
+
+    private var hasNoLogsAtAll: Bool {
+        logger.allLogs.isEmpty
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top) {
-                Button {
-                    let shareText = logger.filteredLogs.toString()
-                    share(logs: shareText)
-                } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.body.bold())
-                }
+            // Header: title + export
+            headerView
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        ForEach(Shaky.Level.allCases, id: \.self) { level in
-                            Button {
-                                if logger.levelFilter.contains(level) {
-                                    logger.levelFilter.removeAll { $0 == level }
-                                } else {
-                                    logger.levelFilter.append(level)
-                                }
-                            } label: {
-                                Text(level.rawValue)
-                                    .padding(4)
-                                    .padding(.horizontal, 8)
-                                    .background(logger.levelFilter.contains(level) ? level.color.opacity(0.4) : level.color.opacity(0.1))
-                                    .cornerRadius(100)
-                                    .foregroundColor(.primary)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                    }
-                    .padding(.bottom)
-                }
-            }
-            .padding([.top, .horizontal], 24)
+            // Filters: levels + tags
+            filterSection
 
-            if logger.availableTags != [] {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        ForEach(logger.availableTags, id: \.self) { tag in
-                            Button {
-                                if logger.tagFilter.contains(tag) {
-                                    logger.tagFilter.removeAll { $0 == tag }
-                                } else {
-                                    logger.tagFilter.append(tag)
-                                }
-                            } label: {
-                                Text("#\(tag.name)")
-                                    .padding(4)
-                                    .padding(.horizontal, 8)
-                                    .background(Color.secondary.opacity(logger.tagFilter.contains(tag) ? 0.4 : 0.1))
-                                    .cornerRadius(100)
-                                    .foregroundColor(.primary)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                    }
-                    .padding(.bottom)
-                }
-                .padding(.horizontal, 24)
-            }
-                    
-            if logger.filteredLogs.isEmpty {
-                Spacer()
+            // Content: list or empty state
+            if isEmptyState {
+                emptyStateView
             } else {
-                Form {
-                    ForEach(logger.filteredLogs, id: \.self) { log in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Image(systemName: "circle.fill")
-                                    .foregroundColor(log.level.color)
-                                    .font(.system(size: 8))
-                                
-                                Text(log.value)
-                                
-                                if let tag = log.tag {
-                                    Text("#\(tag.name)")
-                                        .font(.system(size: 8))
-                                        .padding(4)
-                                        .padding(.horizontal, 6)
-                                        .background(Color.secondary.opacity(0.3))
-                                        .cornerRadius(100)
-                                }
-                                
-                                Spacer()
-                                
-                                VStack {
-                                    Text(dateFormatter.string(from: log.timestamp))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    
-                                    Text(timeFormatter.string(from: log.timestamp))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
+                logListView
             }
         }
         .background(Color(UIColor.systemGroupedBackground))
         .edgesIgnoringSafeArea(.all)
+    }
+
+    private var headerView: some View {
+        HStack {
+            Text("Logs")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+
+            Spacer()
+
+            Button {
+                let shareText = logger.allLogs.toString()
+                share(logs: shareText)
+            } label: {
+                Label("Export logs", systemImage: "square.and.arrow.up")
+                    .font(.subheadline.weight(.medium))
+            }
+            .buttonStyle(ExportButtonStyle())
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+
+    private var filterSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Shaky.Level.allCases, id: \.self) { level in
+                        levelFilterChip(level)
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+
+            if !logger.availableTags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(logger.availableTags, id: \.self) { tag in
+                            tagFilterChip(tag)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+            }
+        }
+        .padding(.bottom, 16)
+    }
+
+    private func levelFilterChip(_ level: Shaky.Level) -> some View {
+        let isActive = logger.levelFilter.contains(level)
+        return Button {
+            if isActive {
+                logger.levelFilter.removeAll { $0 == level }
+            } else {
+                logger.levelFilter.append(level)
+            }
+        } label: {
+            Text(level.rawValue)
+                .font(.caption)
+                .fontWeight(.medium)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(isActive ? level.color.opacity(0.35) : level.color.opacity(0.12))
+                )
+                .foregroundStyle(isActive ? .primary : .secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func tagFilterChip(_ tag: Shaky.Tag) -> some View {
+        let isActive = logger.tagFilter.contains(tag)
+        return Button {
+            if isActive {
+                logger.tagFilter.removeAll { $0 == tag }
+            } else {
+                logger.tagFilter.append(tag)
+            }
+        } label: {
+            Text("#\(tag.name)")
+                .font(.caption)
+                .fontWeight(.medium)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(isActive ? Color.secondary.opacity(0.35) : Color.secondary.opacity(0.12))
+                )
+                .foregroundStyle(isActive ? .primary : .secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 16) {
+            Spacer(minLength: 48)
+
+            Image(systemName: hasNoLogsAtAll ? "doc.text" : "line.3.horizontal.decrease.circle")
+                .font(.system(size: 44))
+                .foregroundStyle(.tertiary)
+
+            Text(hasNoLogsAtAll ? "No logs yet" : "No matches")
+                .font(.headline)
+                .foregroundStyle(.primary)
+
+            Text(hasNoLogsAtAll
+                ? "Logs will appear here when you use Shaky.log() in your app."
+                : "Try adjusting your level or tag filters.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Spacer(minLength: 48)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var logListView: some View {
+        listContent
+    }
+
+    @ViewBuilder
+    private var listContent: some View {
+        let list = List {
+            ForEach(logger.filteredLogs, id: \.self) { log in
+                logRow(log)
+            }
+        }
+        .listStyle(.plain)
+
+        if #available(iOS 16.0, *) {
+            list.scrollContentBackground(.hidden)
+        } else {
+            list
+        }
+    }
+
+    private func logRow(_ log: Log) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Circle()
+                .fill(log.level.color)
+                .frame(width: 8, height: 8)
+                .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(log.value)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+
+                    if let tag = log.tag {
+                        Text(tag.name)
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule().fill(Color.secondary.opacity(0.2))
+                            )
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text(timeFormatter.string(from: log.timestamp))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct ExportButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.accentColor.opacity(configuration.isPressed ? 0.2 : 0.12))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(Color.accentColor.opacity(0.4), lineWidth: 1)
+            )
     }
 }
 
@@ -350,3 +465,18 @@ extension [Log] {
         self.map { $0.toString() }.joined(separator: "\n")
     }
 }
+
+#if DEBUG
+struct ShakyLoggerSheet_Previews: PreviewProvider {
+    static var previews: some View {
+        let logger = ShakyLogger()
+        return ShakyLoggerSheet(logger: logger)
+            .onAppear {
+                logger.log(value: "User tapped refresh", level: .Debug, tag: .Network)
+                logger.log(value: "Cache miss", level: .Warning, tag: .Performance)
+                logger.log(value: "Unauthorized", level: .Critical, tag: .Security)
+                logger.log(value: "Plain message with defaults")
+            }
+    }
+}
+#endif
