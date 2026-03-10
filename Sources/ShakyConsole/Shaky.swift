@@ -220,9 +220,8 @@ public struct ShakyLoggerSheet: View {
     private var headerView: some View {
         HStack {
             Text("Logs")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundStyle(.primary)
+                .font(.headline)
+                .foregroundColor(.primary)
 
             Spacer()
 
@@ -231,7 +230,7 @@ public struct ShakyLoggerSheet: View {
                 share(logs: shareText)
             } label: {
                 Label("Export logs", systemImage: "square.and.arrow.up")
-                    .font(.subheadline.weight(.medium))
+                    .font(.subheadline)
             }
             .buttonStyle(ExportButtonStyle())
         }
@@ -275,16 +274,15 @@ public struct ShakyLoggerSheet: View {
         } label: {
             Text(level.rawValue)
                 .font(.caption)
-                .fontWeight(.medium)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: 20)
                         .fill(isActive ? level.color.opacity(0.35) : level.color.opacity(0.12))
                 )
-                .foregroundStyle(isActive ? .primary : .secondary)
+                .foregroundColor(isActive ? .primary : .secondary)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainButtonStyle())
     }
 
     private func tagFilterChip(_ tag: Shaky.Tag) -> some View {
@@ -298,16 +296,15 @@ public struct ShakyLoggerSheet: View {
         } label: {
             Text("#\(tag.name)")
                 .font(.caption)
-                .fontWeight(.medium)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: 20)
                         .fill(isActive ? Color.secondary.opacity(0.35) : Color.secondary.opacity(0.12))
                 )
-                .foregroundStyle(isActive ? .primary : .secondary)
+                .foregroundColor(isActive ? .primary : .secondary)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainButtonStyle())
     }
 
     private var emptyStateView: some View {
@@ -316,17 +313,17 @@ public struct ShakyLoggerSheet: View {
 
             Image(systemName: hasNoLogsAtAll ? "doc.text" : "line.3.horizontal.decrease.circle")
                 .font(.system(size: 44))
-                .foregroundStyle(.tertiary)
+                .foregroundColor(Color(UIColor.tertiaryLabel))
 
             Text(hasNoLogsAtAll ? "No logs yet" : "No matches")
                 .font(.headline)
-                .foregroundStyle(.primary)
+                .foregroundColor(.primary)
 
             Text(hasNoLogsAtAll
                 ? "Logs will appear here when you use Shaky.log() in your app."
                 : "Try adjusting your level or tag filters.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
@@ -366,24 +363,23 @@ public struct ShakyLoggerSheet: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(log.value)
                         .font(.subheadline)
-                        .foregroundStyle(.primary)
+                        .foregroundColor(.primary)
 
                     if let tag = log.tag {
                         Text(tag.name)
                             .font(.caption2)
-                            .fontWeight(.medium)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(
                                 Capsule().fill(Color.secondary.opacity(0.2))
                             )
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                     }
                 }
 
                 Text(timeFormatter.string(from: log.timestamp))
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundColor(Color(UIColor.tertiaryLabel))
             }
 
             Spacer(minLength: 0)
@@ -398,12 +394,12 @@ private struct ExportButtonStyle: ButtonStyle {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(Color.accentColor.opacity(configuration.isPressed ? 0.2 : 0.12))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(Color.accentColor.opacity(0.4), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
             )
     }
 }
@@ -475,7 +471,7 @@ struct ShakyLoggerSheet_Previews: PreviewProvider {
                 logger.log(value: "User tapped refresh", level: .Debug, tag: .Network)
                 logger.log(value: "Cache miss", level: .Warning, tag: .Performance)
                 logger.log(value: "Unauthorized", level: .Critical, tag: .Security)
-                logger.log(value: "Plain message with defaults")
+                logger.log(value: "Plain message with defaults", level: .None, tag: nil)
             }
     }
 }
